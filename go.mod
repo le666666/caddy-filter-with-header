@@ -1,4 +1,4 @@
-module github.com/echocat/caddy-filter
+module github.com/zrt/caddy-filter
 
 go 1.12
 
