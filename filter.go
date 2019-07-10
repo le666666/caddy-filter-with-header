@@ -21,7 +21,6 @@ func (instance filterHandler) ServeHTTP(writer http.ResponseWriter, request *htt
 	if request.Method == "GET" && request.Header.Get("Upgrade") == "websocket" {
 		return instance.next.ServeHTTP(writer, request)
 	}
-
 	wrapper := newResponseWriterWrapperFor(writer, func(wrapper *responseWriterWrapper) bool {
 		header := wrapper.Header()
 		for _, rule := range instance.rules {
@@ -48,6 +47,20 @@ func (instance filterHandler) ServeHTTP(writer http.ResponseWriter, request *htt
 		}
 	}
 
+	header := wrapper.Header()
+	location :=  header.Get("Location")
+	for _, rule := range instance.rules {
+		if rule.matches(request, &header) {
+			if location != "" {
+				location = string(rule.execute(request, &header, []byte(location)))
+			}
+			
+		}
+	}
+	if location != "" {
+		header.Set("Location", location)
+	}
+
 	if !wrapper.isInterceptingRequired() || !wrapper.isBodyAllowed() {
 		wrapper.writeHeadersToDelegate(result)
 		return result, logError
@@ -55,7 +68,6 @@ func (instance filterHandler) ServeHTTP(writer http.ResponseWriter, request *htt
 	if !wrapper.isBodyAllowed() {
 		return result, logError
 	}
-	header := wrapper.Header()
 	var body []byte
 	bodyRetrieved := false
 	for _, rule := range instance.rules {
@@ -65,10 +77,6 @@ func (instance filterHandler) ServeHTTP(writer http.ResponseWriter, request *htt
 				bodyRetrieved = true
 			}
 			body = rule.execute(request, &header, body)
-			if result == 301 || result == 302{
-				location :=  header.Get("Location")
-				header.Set("Location", string(rule.execute(request, &header, []byte(location))))
-			}
 		}
 	}
 	var n int
