@@ -47,6 +47,7 @@ func (instance filterHandler) ServeHTTP(writer http.ResponseWriter, request *htt
 			return result, err
 		}
 	}
+
 	if !wrapper.isInterceptingRequired() || !wrapper.isBodyAllowed() {
 		wrapper.writeHeadersToDelegate(result)
 		return result, logError
@@ -64,6 +65,10 @@ func (instance filterHandler) ServeHTTP(writer http.ResponseWriter, request *htt
 				bodyRetrieved = true
 			}
 			body = rule.execute(request, &header, body)
+			if result == 301 || result == 302{
+				location :=  header.Get("Location")
+				header.Set("Location", string(rule.execute(request, &header, []byte(location))))
+			}
 		}
 	}
 	var n int
