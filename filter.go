@@ -47,6 +47,7 @@ func (instance filterHandler) ServeHTTP(writer http.ResponseWriter, request *htt
 		}
 	}
 
+	// replace location
 	header := wrapper.Header()
 	location :=  header.Get("Location")
 	for _, rule := range instance.rules {
@@ -59,6 +60,19 @@ func (instance filterHandler) ServeHTTP(writer http.ResponseWriter, request *htt
 	}
 	if location != "" {
 		header.Set("Location", location)
+	}
+	//replace Set-Cookie
+	cookies, ok := header["Set-Cookie"]
+	if ok {
+		for i, cookie := range cookies {
+			cookie_b := []byte(cookie)
+			for _, rule := range instance.rules {
+				if rule.matches(request, &header) {
+					cookie_b = rule.execute(request, &header, cookie_b)
+				}
+			}
+			cookies[i] = string(cookie_b)
+		}
 	}
 
 	if !wrapper.isInterceptingRequired() || !wrapper.isBodyAllowed() {
